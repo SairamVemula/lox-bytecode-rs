@@ -1,14 +1,16 @@
-use std::{env::args, io::{self, BufRead, Write, stdout}};
+use std::{
+    env::args,
+    io::{self, BufRead, Write, stdout},
+};
 
-use crate::vm::{InterpretResult, VM};
+use crate::vm::{InterpretError, VM};
 
 mod chunk;
-mod value;
-mod vm;
 mod compiler;
 mod scanner;
 mod token;
-mod error;
+mod value;
+mod vm;
 
 fn main() {
     let args: Vec<String> = args().collect();
@@ -20,8 +22,7 @@ fn main() {
             println!("Usage: clox [path]");
             std::process::exit(64);
         }
-    }
-    vm.free();
+}
 }
 
 fn repl(vm: &mut VM) {
@@ -45,8 +46,10 @@ fn repl(vm: &mut VM) {
 fn run_file(vm: &mut VM, path: &str) -> io::Result<()> {
     let buf = std::fs::read_to_string(path)?;
     match vm.interpret(&buf) {
-        InterpretResult::CompileError => std::process::exit(65),
-        InterpretResult::RuntimeError => std::process::exit(70),
-        InterpretResult::Ok => std::process::exit(0),
+        Ok(_) => std::process::exit(0),
+        Err(err) => match err {
+        InterpretError::CompileError => std::process::exit(65),
+        InterpretError::RuntimeError => std::process::exit(70),
+        },
     }
 }

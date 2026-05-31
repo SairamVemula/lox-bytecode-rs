@@ -123,7 +123,6 @@ impl TokenType {
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
-    pub literal: Object,
     pub line: usize,
 }
 
@@ -199,11 +198,10 @@ impl Hash for Object {
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, lexeme: String, literal: Object, line: usize) -> Self {
+    pub fn new(token_type: TokenType, lexeme: String, line: usize) -> Self {
         Self {
             token_type,
             lexeme,
-            literal,
             line,
         }
     }
@@ -211,11 +209,6 @@ impl Token {
 
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let lit = match (&self.token_type, &self.literal) {
-            (TokenType::String, _) => self.literal.to_string(),
-            (TokenType::Number, _) => self.literal.to_string(),
-            _ => "null".to_string(),
-        };
-        write!(f, "{} {} {}", self.token_type, self.lexeme, lit)
+        write!(f, "{} {}", self.token_type, self.lexeme)
     }
 }

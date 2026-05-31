@@ -1,3 +1,5 @@
+use std::num::TryFromIntError;
+
 use crate::value::Value;
 
 use super::value::ValueArray;
@@ -35,6 +37,7 @@ impl From<OpCode> for u8 {
     }
 }
 
+#[derive(Debug)]
 pub struct Chunk {
     code: Vec<u8>,
     constants: ValueArray,
@@ -53,22 +56,14 @@ impl Chunk {
         self.code.push(byte);
         self.lines.push(line);
     }
-    pub fn write_opcode(&mut self, byte: OpCode, line: usize) {
-        self.code.push(byte.into());
-        self.lines.push(line);
-    }
 
     pub fn read(&self, ip: usize) -> u8 {
         self.code[ip]
     }
 
-    pub fn free(&mut self) {
-        self.code = Vec::new();
-        self.constants.free();
-    }
-
-    pub fn add_constant(&mut self, value: Value) -> u8 {
-        self.constants.write(value)
+    pub fn add_constant(&mut self, value: Value) -> Result<u8, TryFromIntError> {
+        let idx = self.constants.write(value);
+        Ok(u8::try_from(idx)?)
     }
 
     pub fn get_constant(&self, ip: usize) -> Value {
@@ -93,7 +88,7 @@ impl Chunk {
             print!("{:4} ", self.lines[offset])
         }
 
-        let instruction = self.code[offset].into();
+        let instruction: OpCode = self.code[offset].into();
         match instruction {
             OpCode::Constant => self.constant_instruction("OP_CONSTANT", offset),
             OpCode::Return => self.simple_instruction("OP_RETURN", offset),

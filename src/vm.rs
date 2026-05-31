@@ -1,15 +1,17 @@
 use crate::{
-    chunk::{Chunk, OpCode}, compiler::Compiler, value::Value
+    chunk::{Chunk, OpCode},
+    compiler::Compiler,
+    value::Value,
 };
 
-pub enum InterpretResult {
-    Ok,
+pub type InterpretResult<T = ()> = Result<T, InterpretError>;
+
+pub enum InterpretError {
     CompileError,
     RuntimeError,
 }
 
 pub struct VM {
-    // chunk: Option<Chunk>
     ip: usize,
     stack: Vec<Value>,
 }
@@ -22,12 +24,11 @@ impl VM {
         }
     }
 
-    pub fn free(&self) {}
-
     pub fn interpret(&mut self, source: &String) -> InterpretResult {
-        let compiler =  Compiler::new();
-        compiler.compile(source);
-        InterpretResult::Ok
+        let mut compiler = Compiler::new();
+        let chunk = compiler.compile(source)?;
+        self.ip = 0;
+        self.run(&chunk)
     }
 
     fn run(&mut self, chunk: &Chunk) -> InterpretResult {
@@ -47,7 +48,7 @@ impl VM {
             match instruction {
                 OpCode::Return => {
                     println!("{}", self.stack.pop().unwrap());
-                    return InterpretResult::Ok;
+                    return Ok(());
                 }
                 OpCode::Constant => {
                     let constant = self.read_constant(chunk);
