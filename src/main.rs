@@ -22,7 +22,7 @@ fn main() {
             println!("Usage: clox [path]");
             std::process::exit(64);
         }
-}
+    }
 }
 
 fn repl(vm: &mut VM) {
@@ -48,8 +48,8 @@ fn run_file(vm: &mut VM, path: &str) -> io::Result<()> {
     match vm.interpret(&buf) {
         Ok(_) => std::process::exit(0),
         Err(err) => match err {
-        InterpretError::CompileError => std::process::exit(65),
-        InterpretError::RuntimeError => std::process::exit(70),
+            InterpretError::CompileError => std::process::exit(65),
+            InterpretError::RuntimeError => std::process::exit(70),
         },
     }
 }

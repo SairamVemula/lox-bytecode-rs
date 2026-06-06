@@ -2,6 +2,7 @@ use crate::{
     chunk::{Chunk, OpCode},
     scanner::Scanner,
     token::{Token, TokenType},
+    value::Value,
     vm::InterpretError,
 };
 
@@ -14,8 +15,8 @@ pub struct Compiler {
 
 #[derive(Debug)]
 pub struct Parser {
-    previous: Option<crate::token::Token>,
-    current: Option<crate::token::Token>,
+    previous: Option<Token>,
+    current: Option<Token>,
     panic_mode: bool,
     had_error: bool,
 }
@@ -91,7 +92,7 @@ impl Compiler {
         }
     }
 
-    pub fn compile(&mut self, source: &String) -> Result<Chunk, InterpretError> {
+    pub fn compile(&mut self, source: &str) -> Result<Chunk, InterpretError> {
         self.scanner = Scanner::new(source);
         self.advance();
         self.expression();
@@ -116,6 +117,12 @@ impl Compiler {
             TokenType::Minus => self.emit_byte(OpCode::Subtract.into()),
             TokenType::Star => self.emit_byte(OpCode::Multiple.into()),
             TokenType::Slash => self.emit_byte(OpCode::Divide.into()),
+            TokenType::BangEqual => self.emit_bytes(OpCode::Equal.into(), OpCode::Not.into()),
+            TokenType::Equals => self.emit_byte(OpCode::Equal.into()),
+            TokenType::Greater => self.emit_byte(OpCode::Greater.into()),
+            TokenType::GreaterEqual => self.emit_bytes(OpCode::Less.into(), OpCode::Not.into()),
+            TokenType::Less => self.emit_byte(OpCode::Less.into()),
+            TokenType::LessEqual => self.emit_bytes(OpCode::Greater.into(), OpCode::Not.into()),
             _ => todo!(),
         }
     }
@@ -131,16 +138,26 @@ impl Compiler {
 
         match operator_type {
             TokenType::Minus => self.emit_byte(OpCode::Negate.into()),
-            _ => return,
+            TokenType::Bang => self.emit_byte(OpCode::Not.into()),
+            _ => (),
         }
     }
 
     fn number(&mut self) {
         let lexeme = self.parser.previous.as_ref().unwrap().lexeme.clone();
         let value: f64 = lexeme.parse().unwrap();
-        match self.chunk.add_constant(value) {
+        match self.chunk.add_constant(Value::Number(value)) {
             Ok(constant) => self.emit_bytes(OpCode::Constant.into(), constant),
             Err(_) => self.error_at_previous("Too many constants in one chunk."),
+        }
+    }
+
+    fn literal(&mut self) {
+        match self.parser.previous.as_ref().unwrap().token_type {
+            TokenType::True => self.emit_byte(OpCode::True.into()),
+            TokenType::False => self.emit_byte(OpCode::False.into()),
+            TokenType::Nil => self.emit_byte(OpCode::Nil.into()),
+            _ => unimplemented!("literal type not implemented"),
         }
     }
 
@@ -227,14 +244,14 @@ impl Compiler {
                 precedence: Precedence::Factor,
             },
             Bang => ParseRule {
-                prefix: None,
+                prefix: Some(Compiler::unary),
                 infix: None,
                 precedence: Precedence::None,
             },
             BangEqual => ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Equality,
             },
             Assign => ParseRule {
                 prefix: None,
@@ -243,28 +260,28 @@ impl Compiler {
             },
             Equals => ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Equality,
             },
             Greater => ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
             },
             GreaterEqual => ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
             },
             Less => ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
             },
             LessEqual => ParseRule {
                 prefix: None,
-                infix: None,
-                precedence: Precedence::None,
+                infix: Some(Compiler::binary),
+                precedence: Precedence::Comparison,
             },
             Identifier => ParseRule {
                 prefix: None,
@@ -297,7 +314,7 @@ impl Compiler {
                 precedence: Precedence::None,
             },
             False => ParseRule {
-                prefix: None,
+                prefix: Some(Compiler::literal),
                 infix: None,
                 precedence: Precedence::None,
             },
@@ -317,7 +334,7 @@ impl Compiler {
                 precedence: Precedence::None,
             },
             Nil => ParseRule {
-                prefix: None,
+                prefix: Some(Compiler::literal),
                 infix: None,
                 precedence: Precedence::None,
             },
@@ -347,7 +364,7 @@ impl Compiler {
                 precedence: Precedence::None,
             },
             True => ParseRule {
-                prefix: None,
+                prefix: Some(Compiler::literal),
                 infix: None,
                 precedence: Precedence::None,
             },

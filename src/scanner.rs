@@ -90,13 +90,9 @@ impl Scanner {
                     self.line += 1;
                     self.advance();
                 }
-                b'/' => {
-                    if self.peek_next() == b'/' {
-                        while self.peek() != b'\n' && !self.is_at_end() {
-                            self.advance();
-                        }
-                    } else {
-                        return;
+                b'/' if self.peek_next() == b'/' => {
+                    while self.peek() != b'\n' && !self.is_at_end() {
+                        self.advance();
                     }
                 }
                 _ => {

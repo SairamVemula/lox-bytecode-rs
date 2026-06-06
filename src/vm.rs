@@ -24,7 +24,7 @@ impl VM {
         }
     }
 
-    pub fn interpret(&mut self, source: &String) -> InterpretResult {
+    pub fn interpret(&mut self, source: &str) -> InterpretResult {
         let mut compiler = Compiler::new();
         let chunk = compiler.compile(source)?;
         self.ip = 0;
@@ -47,7 +47,7 @@ impl VM {
 
             match instruction {
                 OpCode::Return => {
-                    println!("{}", self.stack.pop().unwrap());
+                    println!("{}", self.pop());
                     return Ok(());
                 }
                 OpCode::Constant => {
@@ -55,15 +55,45 @@ impl VM {
                     self.stack.push(constant);
                 }
                 OpCode::Negate => {
-                    let value = self.stack.pop().unwrap();
-                    self.stack.push(-value);
+                    if let Value::Number(_) = self.peek(0) {
+                        let value = self.pop();
+                        self.stack.push(-value);
+                    } else {
+                        return self.runtime_error(chunk, "Operand must be numbers.");
+                    }
                 }
-                OpCode::Add => self.binary_op(|a, b| a + b),
-                OpCode::Subtract => self.binary_op(|a, b| a - b),
-                OpCode::Multiple => self.binary_op(|a, b| a * b),
-                OpCode::Divide => self.binary_op(|a, b| a / b),
+                OpCode::Add => self.binary_op(chunk, |a, b| a + b)?,
+                OpCode::Subtract => self.binary_op(chunk, |a, b| a - b)?,
+                OpCode::Multiple => self.binary_op(chunk, |a, b| a * b)?,
+                OpCode::Divide => self.binary_op(chunk, |a, b| a / b)?,
+                OpCode::Nil => self.stack.push(Value::Nil),
+                OpCode::True => self.stack.push(Value::Boolean(true)),
+                OpCode::False => self.stack.push(Value::Boolean(false)),
+                OpCode::Not => {
+                    let value = self.pop();
+                    self.stack.push(Value::Boolean(value.is_falsy()))
+                }
+                OpCode::Equal => {
+                    let b = self.pop();
+                    let a = self.pop();
+                    self.stack.push(Value::Boolean(a == b));
+                }
+                OpCode::Greater => self.binary_op(chunk, |a, b| Value::Boolean(a > b))?,
+                OpCode::Less => self.binary_op(chunk, |a, b| Value::Boolean(a < b))?,
             }
         }
+    }
+
+    fn pop(&mut self) -> Value {
+        self.stack.pop().unwrap()
+    }
+
+    fn peek(&self, distance: usize) -> Value {
+        self.stack[self.stack.len() - distance - 1]
+    }
+
+    fn reset_stack(&mut self) {
+        self.stack.clear();
     }
 
     fn read_byte(&mut self, chunk: &Chunk) -> OpCode {
@@ -78,9 +108,21 @@ impl VM {
         chunk.get_constant(index)
     }
 
-    fn binary_op(&mut self, op: fn(a: Value, b: Value) -> Value) {
-        let b = self.stack.pop().unwrap();
-        let a = self.stack.pop().unwrap();
+    fn binary_op(&mut self, chunk: &Chunk, op: fn(a: Value, b: Value) -> Value) -> InterpretResult {
+        if !self.peek(0).is_number() || !self.peek(1).is_number() {
+            return self.runtime_error(chunk, "Operand must be numbers.");
+        }
+        let b = self.pop();
+        let a = self.pop();
         self.stack.push(op(a, b));
+        Ok(())
+    }
+
+    fn runtime_error(&mut self, chunk: &Chunk, msg: &str) -> InterpretResult {
+        let line = chunk.get_line(self.ip - 1);
+        eprintln!("{msg}");
+        eprintln!("[line {line}] in script");
+        self.reset_stack();
+        Err(InterpretError::RuntimeError)
     }
 }

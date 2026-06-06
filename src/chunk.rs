@@ -14,6 +14,13 @@ pub enum OpCode {
     Subtract,
     Multiple,
     Divide,
+    Nil,
+    True,
+    False,
+    Not,
+    Equal,
+    Greater,
+    Less,
 }
 
 impl From<u8> for OpCode {
@@ -26,6 +33,13 @@ impl From<u8> for OpCode {
             4 => OpCode::Subtract,
             5 => OpCode::Multiple,
             6 => OpCode::Divide,
+            7 => OpCode::Nil,
+            8 => OpCode::True,
+            9 => OpCode::False,
+            10 => OpCode::Not,
+            11 => OpCode::Equal,
+            12 => OpCode::Greater,
+            13 => OpCode::Less,
             _ => unimplemented!("Invalid opcode"),
         }
     }
@@ -97,6 +111,13 @@ impl Chunk {
             OpCode::Subtract => self.simple_instruction("OP_SUBTRACT", offset),
             OpCode::Multiple => self.simple_instruction("OP_MULTIPLE", offset),
             OpCode::Divide => self.simple_instruction("OP_DIVIDE", offset),
+            OpCode::Nil => self.simple_instruction("OP_NIL", offset),
+            OpCode::True => self.simple_instruction("OP_TRUE", offset),
+            OpCode::False => self.simple_instruction("OP_FALSE", offset),
+            OpCode::Not => self.simple_instruction("OP_NOT", offset),
+            OpCode::Equal => self.simple_instruction("OP_EQUAL", offset),
+            OpCode::Greater => self.simple_instruction("OP_GREATER", offset),
+            OpCode::Less => self.simple_instruction("OP_LESS", offset),
         }
     }
 
@@ -111,5 +132,9 @@ impl Chunk {
         self.constants.print_value(constant.into());
         println!("'");
         offset + 2
+    }
+
+    pub fn get_line(&self, ip: usize) -> usize {
+        self.lines[ip]
     }
 }
