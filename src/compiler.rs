@@ -1,5 +1,6 @@
-use crate::{
+use super::{
     chunk::{Chunk, OpCode},
+    object::ObjString,
     scanner::Scanner,
     token::{Token, TokenType},
     value::Value,
@@ -161,6 +162,15 @@ impl Compiler {
         }
     }
 
+    fn string(&mut self) {
+        let s = self.parser.previous.as_ref().unwrap().lexeme.clone();
+        let obj = ObjString::new(s);
+        match self.chunk.add_constant(Value::Object(obj)) {
+            Ok(c) => self.emit_bytes(OpCode::Constant.into(), c),
+            Err(_) => self.error_at_previous("Too many constants in one chunk."),
+        }
+    }
+
     fn parse_precedence(&mut self, precedence: Precedence) {
         self.advance();
         let prefix_rule = Self::get_rule(&self.parser.previous.as_ref().unwrap().token_type).prefix;
@@ -289,7 +299,7 @@ impl Compiler {
                 precedence: Precedence::None,
             },
             String => ParseRule {
-                prefix: None,
+                prefix: Some(Compiler::string),
                 infix: None,
                 precedence: Precedence::None,
             },

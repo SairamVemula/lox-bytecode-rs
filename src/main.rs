@@ -11,6 +11,7 @@ mod scanner;
 mod token;
 mod value;
 mod vm;
+mod object;
 
 fn main() {
     let args: Vec<String> = args().collect();

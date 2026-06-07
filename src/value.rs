@@ -1,18 +1,26 @@
 use std::{
     fmt::Display,
     ops::{Add, Div, Mul, Neg, Sub},
+    rc::Rc,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+use super::object::ObjString;
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Value {
     Number(f64),
     Nil,
     Boolean(bool),
+    Object(Rc<ObjString>),
 }
 
 impl Value {
     pub fn is_number(&self) -> bool {
         matches!(self, Value::Number(_))
+    }
+
+    pub fn is_object(&self) -> bool {
+        matches!(self, Value::Object(_))
     }
 
     pub fn is_falsy(&self) -> bool {
@@ -26,6 +34,7 @@ impl Display for Value {
             Value::Number(n) => write!(f, "{n}"),
             Value::Nil => write!(f, "nil"),
             Value::Boolean(s) => write!(f, "{s}"),
+            Value::Object(obj) => write!(f,"{}", obj.0),
         }
     }
 }
@@ -36,6 +45,9 @@ impl Add for Value {
     fn add(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (Value::Number(a), Value::Number(b)) => Value::Number(a + b),
+            (Value::Object(a), Value::Object(b)) => {
+                Value::Object(ObjString::new(format!("{}{}", a.0, b.0)))
+            }
             _ => panic!("Invalid operation"),
         }
     }
@@ -104,6 +116,6 @@ impl ValueArray {
     }
 
     pub fn get_value(&self, index: usize) -> Value {
-        self.values[index]
+        self.values[index].clone()
     }
 }

@@ -55,14 +55,28 @@ impl VM {
                     self.stack.push(constant);
                 }
                 OpCode::Negate => {
-                    if let Value::Number(_) = self.peek(0) {
-                        let value = self.pop();
-                        self.stack.push(-value);
+                    if !self.peek(0).is_number() {
+                        return self.runtime_error(chunk, "Operand must be a number.");
+                    }
+                    let value = self.pop();
+                    self.stack.push(-value);
+                }
+                OpCode::Add => {
+                    if self.peek(0).is_object() && self.peek(1).is_object() {
+                        let b = self.pop();
+                        let a = self.pop();
+                        self.stack.push(a + b);
+                    } else if !self.peek(0).is_number() || !self.peek(1).is_number() {
+                        return self.runtime_error(
+                            chunk,
+                            "Operands must be two numbers or two strings.",
+                        );
                     } else {
-                        return self.runtime_error(chunk, "Operand must be numbers.");
+                        let b = self.pop();
+                        let a = self.pop();
+                        self.stack.push(a + b);
                     }
                 }
-                OpCode::Add => self.binary_op(chunk, |a, b| a + b)?,
                 OpCode::Subtract => self.binary_op(chunk, |a, b| a - b)?,
                 OpCode::Multiple => self.binary_op(chunk, |a, b| a * b)?,
                 OpCode::Divide => self.binary_op(chunk, |a, b| a / b)?,
@@ -88,8 +102,8 @@ impl VM {
         self.stack.pop().unwrap()
     }
 
-    fn peek(&self, distance: usize) -> Value {
-        self.stack[self.stack.len() - distance - 1]
+    fn peek(&self, distance: usize) -> &Value {
+        &self.stack[self.stack.len() - 1 - distance]
     }
 
     fn reset_stack(&mut self) {

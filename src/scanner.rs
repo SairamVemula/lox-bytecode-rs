@@ -140,8 +140,9 @@ impl Scanner {
             return self.error_token("Unterminated string.");
         }
 
+        let value = self.source[self.start + 1..self.current].to_string();
         self.advance();
-        self.make_token(TokenType::String)
+        Token::new(TokenType::String, value, self.line)
     }
 
     fn make_token(&mut self, token_type: TokenType) -> Token {
